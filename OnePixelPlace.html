@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>One Pixel Place</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;600;700&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a; /* Slate 900 */
+            color: #f8fafc; /* Slate 50 */
+        }
+        
+        h1, h2, h3, .pixel-font {
+            font-family: 'Press Start 2P', cursive;
+        }
+
+        .pixel-container {
+            width: 256px;
+            height: 256px;
+            background-color: #ffffff;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5), 0 0 0 4px #334155;
+            image-rendering: pixelated;
+            cursor: pointer;
+            transition: transform 0.1s ease-in-out;
+        }
+        
+        .pixel-container:active {
+            transform: scale(0.98);
+        }
+
+        .color-swatch {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            cursor: pointer;
+            border: 3px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .color-swatch.selected {
+            border-color: #f8fafc;
+            transform: scale(1.1);
+            box-shadow: 0 0 10px rgba(255,255,255,0.3);
+        }
+
+        .leaderboard-row {
+            transition: background-color 0.2s;
+        }
+        
+        .leaderboard-row:hover {
+            background-color: #1e293b;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #1e293b; 
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #475569; 
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #64748b; 
+        }
+
+        .cooldown-overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            font-weight: bold;
+            color: white;
+            z-index: 10;
+        }
+
+        .modal {
+            display: none; 
+            position: fixed; 
+            z-index: 100; 
+            left: 0;
+            top: 0;
+            width: 100%; 
+            height: 100%; 
+            background-color: rgba(0,0,0,0.8); 
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-content {
+            background-color: #1e293b;
+            margin: 15% auto; 
+            padding: 24px;
+            border: 2px solid #334155;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <div id="loadingScreen" class="fixed inset-0 z-[100] bg-slate-900 flex flex-col items-center justify-center transition-opacity duration-500">
+        <div class="relative w-16 h-16 mb-6">
+            <div class="absolute inset-0 border-4 border-slate-700 rounded-full"></div>
+            <div class="absolute inset-0 border-4 border-blue-500 rounded-full border-t-transparent animate-spin"></div>
+        </div>
+        <h2 class="text-white pixel-font text-xs md:text-sm animate-pulse tracking-widest">CONNECTING...</h2>
+    </div>
+
+    <header class="bg-slate-800 border-b border-slate-700 py-4 px-4 shadow-lg flex justify-between items-center z-30 relative">
+        <button id="openLeaderboardBtn" class="lg:hidden text-yellow-400 hover:text-yellow-300 p-2 transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path><path d="M4 22h16"></path><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"></path><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"></path><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"></path></svg>
+        </button>
+        <div class="text-center flex-1">
+            <h1 class="text-xl md:text-3xl text-white tracking-widest uppercase" style="line-height: 1.5;">ONE PIXEL <br class="md:hidden"/> PLACE</h1>
+            <p class="text-slate-400 mt-2 text-xs md:text-sm max-w-lg mx-auto">Claim the pixel. Hold it as long as you can. Defend your color.</p>
+        </div>
+        <button id="openProfileBtn" class="lg:hidden relative text-slate-300 hover:text-white p-2 transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+            <span id="profileAlertBadge" class="absolute top-0 right-0 flex h-4 w-4">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-4 w-4 bg-red-500 text-white items-center justify-center text-[11px] font-bold" style="font-family: sans-serif;">!</span>
+            </span>
+        </button>
+    </header>
+
+    <main class="flex-grow container mx-auto px-4 py-8 flex flex-col lg:flex-row gap-8 justify-center items-start max-w-6xl">
+        <div class="w-full lg:w-1/2 flex flex-col items-center space-y-8 bg-slate-800/50 p-6 rounded-2xl border border-slate-700">
+            <div class="text-center w-full bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-inner">
+                <p class="text-sm text-slate-400 font-semibold uppercase tracking-wider mb-2">Current Owner</p>
+                <div class="flex items-center justify-center space-x-3">
+                    <div id="statusColorIndicator" class="w-4 h-4 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]"></div>
+                    <span id="currentOwnerName" class="text-xl font-bold text-white pixel-font text-shadow">Nobody</span>
+                </div>
+                <div class="mt-3 font-mono text-xl text-yellow-400 font-bold bg-slate-900 py-2 rounded-lg border border-slate-700">
+                    Held for: <span id="currentHoldTime">0.0s</span>
+                </div>
+            </div>
+            <div class="relative">
+                <div id="thePixel" class="pixel-container" style="background-color: #ffffff;"></div>
+                <div id="cooldownOverlay" class="cooldown-overlay hidden rounded-md pixel-font">3.0</div>
+            </div>
+            <div class="w-full">
+                <p class="text-sm text-slate-400 font-semibold uppercase tracking-wider mb-3 text-center">Choose Your Color</p>
+                <div class="flex flex-wrap justify-center gap-3" id="colorPalette"></div>
+            </div>
+        </div>
+
+        <div id="mobileOverlay" class="fixed inset-0 bg-black/60 z-40 hidden lg:hidden backdrop-blur-sm transition-opacity"></div>
+        <div class="w-full lg:w-1/3 flex flex-col space-y-6">
+            <div id="profilePanel" class="fixed inset-y-0 right-0 z-50 w-80 max-w-[85vw] transform translate-x-full transition-transform duration-300 bg-slate-900 border-l border-slate-700 p-4 shadow-2xl flex flex-col lg:relative lg:transform-none lg:inset-auto lg:w-full lg:p-0 lg:bg-transparent lg:border-none lg:shadow-none">
+                <div class="lg:hidden flex justify-between items-center mb-6 pb-4 border-b border-slate-800">
+                     <h2 class="text-white font-bold pixel-font text-sm">Profile</h2>
+                     <button id="closeProfileBtn" class="text-slate-400 hover:text-white">
+                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                     </button>
+                </div>
+                <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5 shadow-xl">
+                    <h2 class="text-sm text-slate-400 font-semibold uppercase tracking-wider mb-4 flex items-center gap-2">Your Profile</h2>
+                    <div class="flex flex-col gap-2">
+                        <label for="usernameInput" class="text-xs text-slate-400">Display Name</label>
+                        <div class="flex gap-2">
+                            <input type="text" id="usernameInput" maxlength="12" placeholder="Anon" class="flex-1 h-10 bg-slate-900 border border-slate-700 rounded-lg px-3 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 font-mono text-sm">
+                            <button id="saveNameBtn" class="h-10 flex items-center justify-center bg-blue-600 hover:bg-blue-500 text-white px-4 rounded-lg font-semibold text-sm transition-colors">Save</button>
+                        </div>
+                        <p id="nameStatus" class="text-xs text-emerald-400 hidden mt-1">Username saved!</p>
+                    </div>
+
+                    <div class="mt-5 pt-5 border-t border-slate-700 flex flex-col gap-3">
+                        <p class="text-xs text-slate-400 font-semibold uppercase tracking-wider">Account Sync</p>
+                        <button id="googleAuthBtn" class="flex items-center justify-center gap-2 bg-white text-slate-900 hover:bg-slate-200 px-4 py-2 rounded-lg font-semibold text-sm transition-colors w-full">
+                            <svg viewBox="0 0 24 24" width="18" height="18" xmlns="http://www.w3.org/2000/svg"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+                            Sign in with Google
+                        </button>
+                        <button id="signOutBtn" class="hidden bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg font-semibold text-sm transition-colors w-full">Sign Out (Play as Guest)</button>
+                        <p id="authStatusText" class="text-xs text-slate-500 text-center">Playing as Guest. Link account to save progress.</p>
+                    </div>
+                </div>
+            </div>
+            <div id="leaderboardPanel" class="fixed inset-y-0 left-0 z-50 w-80 max-w-[85vw] transform -translate-x-full transition-transform duration-300 bg-slate-900 border-r border-slate-700 p-4 shadow-2xl flex flex-col lg:relative lg:transform-none lg:inset-auto lg:w-full lg:p-0 lg:bg-transparent lg:border-none lg:shadow-none">
+                <div class="lg:hidden flex justify-between items-center mb-6 pb-4 border-b border-slate-800">
+                     <h2 class="text-white font-bold pixel-font text-sm">Leaderboard</h2>
+                     <button id="closeLeaderboardBtn" class="text-slate-400 hover:text-white">
+                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                     </button>
+                </div>
+                <div class="bg-slate-800 border border-slate-700 rounded-2xl flex flex-col shadow-xl overflow-hidden flex-1 lg:h-[480px]">
+                    <div class="bg-slate-900/50 p-4 border-b border-slate-700 flex justify-between items-center">
+                        <h2 class="text-sm font-bold text-white uppercase tracking-widest pixel-font flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-yellow-400"><path d="M8 21h8"></path><path d="M12 17v4"></path><path d="m11.4 3.7-2.6 5.8a1 1 0 0 1-.7.6l-6.3.9a1 1 0 0 0-.6 1.7l4.6 4.5a1 1 0 0 1 .3 1l-1 6.3a1 1 0 0 0 1.5 1.1l5.6-3a1 1 0 0 1 1 0l5.6 3a1 1 0 0 0 1.5-1.1l-1-6.3a1 1 0 0 1 .3-1l4.6-4.5a1 1 0 0 0-.6-1.7l-6.3-.9a1 1 0 0 1-.7-.6l-2.6-5.8a1 1 0 0 0-1.8 0Z"></path></svg>
+                            Top Holders
+                        </h2>
+                    </div>
+                    <div class="flex-1 overflow-y-auto custom-scrollbar p-2" id="leaderboardList">
+                        <div class="flex items-center justify-center h-full text-slate-500 text-sm">Loading leaderboard...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modals -->
+    <div id="errorModal" class="modal">
+        <div class="modal-content text-center">
+            <h3 class="text-red-400 font-bold mb-4 text-xl flex items-center justify-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                Info
+            </h3>
+            <p id="errorMessage" class="text-slate-300 text-sm mb-5"></p>
+            <button id="closeErrorBtn" class="w-full bg-slate-700 py-2 rounded-lg text-white font-bold">Close</button>
+        </div>
+    </div>
+    
+    <div id="captchaModal" class="modal">
+        <div class="modal-content text-center border-blue-500 border-2">
+            <h3 class="text-blue-400 font-bold mb-4 text-xl">Prove you're human!</h3>
+            <p id="captchaQuestion" class="text-yellow-400 font-mono text-2xl mb-4 tracking-widest"></p>
+            <input type="number" id="captchaInput" class="w-24 bg-slate-900 border border-slate-700 rounded-lg p-3 text-white mb-4 text-center text-xl mx-auto block" placeholder="?">
+            <button id="submitCaptchaBtn" class="w-full bg-blue-600 hover:bg-blue-500 py-3 rounded-lg text-white font-bold transition-colors">Verify & Claim</button>
+        </div>
+    </div>
+
+    <!-- Complete Restored Backend Script -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, linkWithPopup, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot, runTransaction, Timestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyB0kcX8UQ5Cel8NHIuQn6dNCD4Afe1kdSs",
+            authDomain: "onepixelplace.firebaseapp.com",
+            projectId: "onepixelplace",
+            storageBucket: "onepixelplace.firebasestorage.app",
+            messagingSenderId: "134860608855",
+            appId: "1:134860608855:web:2be73950b7e25685edda12"
+        };
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = 'one-pixel-place-app';
+        const basePath = ['artifacts', appId, 'public', 'data'];
+
+        let user = null;
+        let selectedColor = '#ef4444'; 
+        let cooldownActive = false;
+        let cooldownTimeLeft = 0;
+        let currentOwnerId = null;
+        let currentOwnerCaptureTime = null;
+        let holdTimerInterval = null;
+        let currentUsername = "";
+        let baseLeaderboard = []; 
+        
+        let pixelUnsubscribe = null;
+        let leaderboardUnsubscribe = null;
+        let liveTickerInterval = null;
+        
+        let isPixelLoaded = false;
+        let isLeaderboardLoaded = false;
+
+        let clickCount = 0;
+        let captchaAnswer = 0;
+
+        const COOLDOWN_DURATION_MS = 5000;
+        const COLORS = [
+            '#ffffff', '#000000', '#ef4444', '#f97316', '#f59e0b', '#eab308',
+            '#84cc16', '#22c55e', '#10b981', '#14b8a6', '#06b6d4', '#0ea5e9',
+            '#3b82f6', '#6366f1', '#8b5cf6', '#a855f7', '#d946ef', '#ec4899'
+        ];
+
+        // --- DOM Elements ---
+        const pixelEl = document.getElementById('thePixel');
+        const paletteEl = document.getElementById('colorPalette');
+        const currentOwnerNameEl = document.getElementById('currentOwnerName');
+        const currentHoldTimeEl = document.getElementById('currentHoldTime');
+        const statusColorIndicator = document.getElementById('statusColorIndicator');
+        const leaderboardListEl = document.getElementById('leaderboardList');
+        const cooldownOverlay = document.getElementById('cooldownOverlay');
+        const usernameInput = document.getElementById('usernameInput');
+        const saveNameBtn = document.getElementById('saveNameBtn');
+        const nameStatus = document.getElementById('nameStatus');
+        const googleAuthBtn = document.getElementById('googleAuthBtn');
+        const signOutBtn = document.getElementById('signOutBtn');
+        const authStatusText = document.getElementById('authStatusText');
+        const openLeaderboardBtn = document.getElementById('openLeaderboardBtn');
+        const closeLeaderboardBtn = document.getElementById('closeLeaderboardBtn');
+        const leaderboardPanel = document.getElementById('leaderboardPanel');
+        const openProfileBtn = document.getElementById('openProfileBtn');
+        const closeProfileBtn = document.getElementById('closeProfileBtn');
+        const profilePanel = document.getElementById('profilePanel');
+        const mobileOverlay = document.getElementById('mobileOverlay');
+        const loadingScreen = document.getElementById('loadingScreen');
+        const errorModal = document.getElementById('errorModal');
+        const errorMessage = document.getElementById('errorMessage');
+        const closeErrorBtn = document.getElementById('closeErrorBtn');
+        const captchaModal = document.getElementById('captchaModal');
+        const captchaQuestion = document.getElementById('captchaQuestion');
+        const captchaInput = document.getElementById('captchaInput');
+        const submitCaptchaBtn = document.getElementById('submitCaptchaBtn');
+        const profileAlertBadge = document.getElementById('profileAlertBadge');
+
+        // --- Core Functions ---
+        function getDefaultUsername(uid) {
+            if (!uid || uid === 'system') return 'Anon';
+            return 'Anon ' + uid.substring(0, 4).toUpperCase(); // No hyphen
+        }
+
+        function escapeHTML(str) {
+            if (!str) return '';
+            return str.replace(/[&<>'"]/g, tag => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+            }[tag]));
+        }
+
+        function isValidUsername(str) {
+            if (!/^[a-zA-Z0-9 _]{1,12}$/.test(str)) return false;
+            const normalized = str.toLowerCase().replace(/[^a-z]/g, '');
+            const blockedWords = ['admin', 'system', 'mod', 'fuck', 'shit', 'bitch', 'cunt', 'nigg', 'fag', 'asshole', 'dick', 'pussy', 'cock', 'whore', 'slut', 'nazi', 'hitler'];
+            return !blockedWords.some(word => normalized.includes(word));
+        }
+
+        function formatTime(ms) {
+            if (!ms || ms < 0) return '0.0s';
+            let totalSeconds = Math.floor(ms / 1000);
+            let days = Math.floor(totalSeconds / 86400);
+            totalSeconds %= 86400;
+            let hours = Math.floor(totalSeconds / 3600);
+            totalSeconds %= 3600;
+            let minutes = Math.floor(totalSeconds / 60);
+            let seconds = totalSeconds % 60;
+
+            let parts = [];
+            if (days > 0) parts.push(`${days}d`);
+            if (hours > 0) parts.push(`${hours}h`);
+            if (minutes > 0) parts.push(`${minutes}m`);
+            
+            if (parts.length === 0) return (ms / 1000).toFixed(1) + 's';
+            
+            parts.push(`${seconds}s`);
+            return parts.join(', ');
+        }
+
+        function togglePanel(panel, show) {
+            if (show) {
+                if(panel === leaderboardPanel) panel.classList.remove('-translate-x-full');
+                else panel.classList.remove('translate-x-full');
+                mobileOverlay.classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+            } else {
+                if(panel === leaderboardPanel) panel.classList.add('-translate-x-full');
+                else panel.classList.add('translate-x-full');
+                mobileOverlay.classList.add('hidden');
+                document.body.style.overflow = '';
+            }
+        }
+
+        function checkLoadingComplete() {
+            if (isPixelLoaded && isLeaderboardLoaded && loadingScreen) {
+                loadingScreen.style.opacity = '0';
+                setTimeout(() => loadingScreen.classList.add('hidden'), 500);
+            }
+        }
+
+        function selectColor(color, swatchEl) {
+            selectedColor = color;
+            document.querySelectorAll('.color-swatch').forEach(el => el.classList.remove('selected'));
+            swatchEl.classList.add('selected');
+        }
+
+        function showError(msg) {
+            errorMessage.textContent = msg;
+            errorModal.style.display = 'block';
+        }
+
+        function initUI() {
+            paletteEl.innerHTML = '';
+            COLORS.forEach(color => {
+                const swatch = document.createElement('div');
+                swatch.className = `color-swatch ${color === selectedColor ? 'selected' : ''}`;
+                swatch.style.backgroundColor = color;
+                swatch.onclick = () => selectColor(color, swatch);
+                paletteEl.appendChild(swatch);
+            });
+
+            pixelEl.addEventListener('click', handlePixelClick);
+            saveNameBtn.addEventListener('click', handleSaveUsername);
+            googleAuthBtn.addEventListener('click', handleGoogleAuth);
+            signOutBtn.addEventListener('click', handleSignOut);
+            closeErrorBtn.addEventListener('click', () => { errorModal.style.display = 'none'; });
+            
+            openLeaderboardBtn.addEventListener('click', () => togglePanel(leaderboardPanel, true));
+            closeLeaderboardBtn.addEventListener('click', () => togglePanel(leaderboardPanel, false));
+            
+            openProfileBtn.addEventListener('click', () => {
+                togglePanel(profilePanel, true);
+                if (profileAlertBadge) profileAlertBadge.classList.add('hidden');
+            });
+            
+            closeProfileBtn.addEventListener('click', () => togglePanel(profilePanel, false));
+            mobileOverlay.addEventListener('click', () => {
+                togglePanel(leaderboardPanel, false);
+                togglePanel(profilePanel, false);
+            });
+
+            submitCaptchaBtn.addEventListener('click', verifyCaptcha);
+            captchaInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') verifyCaptcha();
+            });
+        }
+
+        // --- CAPTCHA ---
+        function showCaptcha() {
+            const num1 = Math.floor(Math.random() * 10) + 1;
+            const num2 = Math.floor(Math.random() * 10) + 1;
+            captchaAnswer = num1 + num2;
+            captchaQuestion.textContent = `${num1} + ${num2} = ?`;
+            captchaInput.value = '';
+            captchaModal.style.display = 'block';
+            captchaInput.focus();
+        }
+
+        function verifyCaptcha() {
+            const parsed = parseInt(captchaInput.value);
+            if (!isNaN(parsed) && parsed === captchaAnswer) {
+                captchaModal.style.display = 'none';
+                performClaim(); 
+            } else {
+                alert("Incorrect math! Try again.");
+                captchaInput.value = '';
+                showCaptcha(); // generate new problem
+            }
+        }
+
+        // --- Auth ---
+        async function initAuth() {
+            try {
+                await auth.authStateReady();
+                if (!auth.currentUser) await signInAnonymously(auth);
+            } catch (error) {
+                showError("Auth failed: " + error.message); 
+            }
+        }
+
+        onAuthStateChanged(auth, async (newUser) => {
+            user = newUser;
+            if (user) {
+                updateAuthUI();
+                await loadUserProfile();
+                setupListeners();
+            }
+        });
+
+        function updateAuthUI() {
+            if (!user) return;
+            const isGoogleLinked = user.providerData.some(p => p.providerId === 'google.com');
+            if (isGoogleLinked) {
+                googleAuthBtn.classList.add('hidden');
+                signOutBtn.classList.remove('hidden');
+                authStatusText.textContent = "Progress is saved and synced.";
+            } else {
+                googleAuthBtn.classList.remove('hidden');
+                signOutBtn.classList.add('hidden');
+                authStatusText.textContent = "Playing as Guest. Link account to save progress.";
+            }
+        }
+
+        async function handleGoogleAuth() {
+            const provider = new GoogleAuthProvider();
+            try {
+                if (user && user.isAnonymous) {
+                    await linkWithPopup(user, provider);
+                    updateAuthUI();
+                } else {
+                    await signInWithPopup(auth, provider);
+                }
+            } catch (error) {
+                if (error.code === 'auth/credential-already-in-use') {
+                    try { await signInWithPopup(auth, provider); } 
+                    catch (e) { showError("Failed to sign in: " + e.message); }
+                } else if (error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') {
+                    showError("Auth failed: " + error.message);
+                }
+            }
+        }
+
+        async function handleSignOut() {
+            try {
+                await signOut(auth);
+                await signInAnonymously(auth);
+            } catch (error) { showError("Failed to sign out."); }
+        }
+
+        async function loadUserProfile() {
+            if(!user) return;
+            const userProfileRef = doc(db, ...basePath, 'userProfiles', user.uid);
+            try {
+                const docSnap = await getDoc(userProfileRef);
+                if (docSnap.exists() && docSnap.data().username) {
+                    currentUsername = docSnap.data().username;
+                    usernameInput.value = currentUsername;
+                } else {
+                    currentUsername = ""; 
+                    usernameInput.placeholder = getDefaultUsername(user.uid);
+                    usernameInput.value = "";
+                }
+            } catch (error) { console.error("Error loading profile:", error); }
+        }
+
+        async function handleSaveUsername() {
+            if(!user) return;
+            const newName = usernameInput.value.trim();
+            if (!isValidUsername(newName)) {
+                showError("Invalid name. Use 1-12 letters/numbers only. No slurs.");
+                return;
+            }
+
+            saveNameBtn.disabled = true;
+            saveNameBtn.textContent = '...';
+            nameStatus.classList.add('hidden');
+            const normalizedName = newName.toLowerCase();
+            const takenNamesRef = doc(db, ...basePath, 'takenUsernames', normalizedName);
+            const userProfileRef = doc(db, ...basePath, 'userProfiles', user.uid);
+
+            try {
+                await runTransaction(db, async (transaction) => {
+                    const nameDoc = await transaction.get(takenNamesRef);
+                    if (nameDoc.exists() && nameDoc.data().uid !== user.uid) throw new Error("Username already taken!");
+                    
+                    const currentProfile = await transaction.get(userProfileRef);
+                    if (currentProfile.exists()) {
+                        const oldName = currentProfile.data().username;
+                        if (oldName && oldName.toLowerCase() !== normalizedName) {
+                            transaction.delete(doc(db, ...basePath, 'takenUsernames', oldName.toLowerCase()));
+                        }
+                    }
+                    transaction.set(takenNamesRef, { uid: user.uid, original: newName });
+                    transaction.set(userProfileRef, { username: newName }, { merge: true });
+                });
+                currentUsername = newName;
+                nameStatus.classList.remove('hidden');
+                setTimeout(() => nameStatus.classList.add('hidden'), 3000);
+            } catch (error) {
+                showError(error.message || "Failed to save username.");
+            } finally {
+                saveNameBtn.disabled = false;
+                saveNameBtn.textContent = 'Save';
+            }
+        }
+
+        // --- Sync Listeners ---
+        function setupListeners() {
+            if (!user) return;
+            if (pixelUnsubscribe) pixelUnsubscribe();
+            if (leaderboardUnsubscribe) leaderboardUnsubscribe();
+            if (liveTickerInterval) clearInterval(liveTickerInterval);
+
+            const pixelRef = doc(db, ...basePath, 'gameState', 'pixel');
+            pixelUnsubscribe = onSnapshot(pixelRef, (docSnap) => {
+                isPixelLoaded = true;
+                checkLoadingComplete();
+                if (docSnap.exists()) {
+                    updatePixelVisuals(docSnap.data());
+                } else {
+                    setDoc(pixelRef, { color: '#ffffff', ownerId: 'system', ownerName: 'System', captureTime: Timestamp.now() });
+                }
+            }, (err) => showError("Lost connection to server."));
+
+            const leaderboardColRef = collection(db, ...basePath, 'leaderboard');
+            leaderboardUnsubscribe = onSnapshot(leaderboardColRef, (snapshot) => {
+                isLeaderboardLoaded = true;
+                checkLoadingComplete();
+                baseLeaderboard = [];
+                snapshot.forEach(doc => baseLeaderboard.push({ id: doc.id, ...doc.data() }));
+                refreshLiveLeaderboard(); 
+            });
+
+            liveTickerInterval = setInterval(refreshLiveLeaderboard, 1000);
+        }
+
+        function updatePixelVisuals(data) {
+            pixelEl.style.backgroundColor = data.color;
+            statusColorIndicator.style.backgroundColor = data.color;
+            currentOwnerNameEl.textContent = data.ownerName || getDefaultUsername(data.ownerId);
+            currentOwnerId = data.ownerId;
+            currentOwnerCaptureTime = data.captureTime ? data.captureTime.toMillis() : Date.now();
+
+            if (holdTimerInterval) clearInterval(holdTimerInterval);
+            holdTimerInterval = setInterval(() => {
+                currentHoldTimeEl.textContent = formatTime(Date.now() - currentOwnerCaptureTime);
+            }, 100);
+            refreshLiveLeaderboard();
+        }
+
+        function refreshLiveLeaderboard() {
+            if (baseLeaderboard.length === 0 && !currentOwnerId) {
+                leaderboardListEl.innerHTML = '<div class="text-center text-slate-500 mt-10">No scores yet.</div>';
+                return;
+            }
+            const liveEntries = baseLeaderboard.map(entry => ({...entry}));
+            
+            if (currentOwnerId && currentOwnerId !== 'system' && currentOwnerCaptureTime) {
+                const liveHoldTime = Date.now() - currentOwnerCaptureTime;
+                const ownerEntry = liveEntries.find(e => e.id === currentOwnerId);
+                if (ownerEntry) ownerEntry.totalHoldTime = (ownerEntry.totalHoldTime || 0) + liveHoldTime;
+                else liveEntries.push({ id: currentOwnerId, username: currentOwnerNameEl.textContent, totalHoldTime: liveHoldTime });
+            }
+            
+            liveEntries.sort((a, b) => (b.totalHoldTime || 0) - (a.totalHoldTime || 0));
+            updateLeaderboardUI(liveEntries.slice(0, 10));
+        }
+
+        function updateLeaderboardUI(entries) {
+            leaderboardListEl.innerHTML = '';
+            entries.forEach((entry, index) => {
+                const rankColor = index === 0 ? 'text-yellow-400 font-bold' : index === 1 ? 'text-slate-300 font-bold' : index === 2 ? 'text-amber-600 font-bold' : 'text-slate-400';
+                const isMe = entry.id === user?.uid;
+                const bgClass = isMe ? 'bg-blue-900/30 border border-blue-800/50' : 'border border-transparent';
+                const displayUserName = escapeHTML(entry.username || getDefaultUsername(entry.id));
+
+                const row = document.createElement('div');
+                row.className = `flex justify-between items-center p-3 mb-2 rounded-lg leaderboard-row ${bgClass}`;
+                row.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <span class="w-6 text-center ${rankColor} pixel-font text-xs">#${index + 1}</span>
+                        <div class="flex flex-col">
+                            <span class="text-white font-mono text-sm">${displayUserName} ${isMe ? '<span class="text-xs text-blue-400 ml-1">(You)</span>' : ''}</span>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-emerald-400 font-mono font-bold whitespace-nowrap text-xs sm:text-sm">${formatTime(entry.totalHoldTime || 0)}</span>
+                    </div>`;
+                leaderboardListEl.appendChild(row);
+            });
+        }
+
+        // --- Game Actions ---
+        function handlePixelClick() {
+            if (!user) { showError("Connecting to server..."); return; }
+            if (cooldownActive) return;
+
+            clickCount++;
+            if (clickCount % 10 === 0) {
+                showCaptcha();
+                return; 
+            }
+            performClaim();
+        }
+
+        async function performClaim() {
+            startCooldown();
+            const pixelRef = doc(db, ...basePath, 'gameState', 'pixel');
+            const newCaptureTimeMs = Date.now();
+            const prevOwnerId = currentOwnerId;
+            const timeHeldMs = newCaptureTimeMs - currentOwnerCaptureTime;
+            const displayUserName = currentUsername || getDefaultUsername(user.uid);
+
+            try {
+                await runTransaction(db, async (transaction) => {
+                    let currentTotal = 0;
+                    let oldName = prevOwnerId ? getDefaultUsername(prevOwnerId) : 'Anon';
+                    let updatePrevOwner = false;
+                    let prevLeaderboardRef = null;
+
+                    if (prevOwnerId && prevOwnerId !== 'system' && timeHeldMs > 0) {
+                        prevLeaderboardRef = doc(db, ...basePath, 'leaderboard', prevOwnerId);
+                        const prevDoc = await transaction.get(prevLeaderboardRef);
+                        updatePrevOwner = true;
+                        if (prevDoc.exists()) {
+                            currentTotal = prevDoc.data().totalHoldTime || 0;
+                            oldName = prevDoc.data().username || oldName;
+                        }
+                    }
+
+                    transaction.set(pixelRef, {
+                        color: selectedColor,
+                        ownerId: user.uid,
+                        ownerName: displayUserName,
+                        captureTime: Timestamp.fromMillis(newCaptureTimeMs)
+                    });
+
+                    if (updatePrevOwner) {
+                        transaction.set(prevLeaderboardRef, {
+                            totalHoldTime: currentTotal + timeHeldMs,
+                            username: oldName 
+                        }, { merge: true });
+                    }
+                });
+
+                setDoc(doc(db, ...basePath, 'leaderboard', user.uid), { username: displayUserName }, { merge: true });
+            } catch (error) {
+                showError("Failed to claim pixel. " + error.message);
+                cooldownActive = false;
+                cooldownOverlay.classList.add('hidden');
+            }
+        }
+
+        function startCooldown() {
+            cooldownActive = true;
+            cooldownTimeLeft = COOLDOWN_DURATION_MS;
+            cooldownOverlay.classList.remove('hidden');
+            const interval = setInterval(() => {
+                cooldownTimeLeft -= 100;
+                cooldownOverlay.textContent = (cooldownTimeLeft / 1000).toFixed(1);
+                if (cooldownTimeLeft <= 0) {
+                    clearInterval(interval);
+                    cooldownActive = false;
+                    cooldownOverlay.classList.add('hidden');
+                }
+            }, 100);
+        }
+
+        // Init App
+        initUI();
+        initAuth();
+    </script>
+</body>
+</html>
