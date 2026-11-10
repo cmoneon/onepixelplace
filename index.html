@@ -6,237 +6,440 @@
     <title>One Pixel Place</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap');
+
+        :root {
+            --pixel-glow: rgba(255, 255, 255, 0.25);
+        }
 
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #0f172a; /* Slate 900 */
-            color: #f8fafc; /* Slate 50 */
+            background-color: #090d16;
+            background-image: 
+                radial-gradient(at 50% 0%, rgba(59, 130, 246, 0.12) 0px, transparent 60%),
+                radial-gradient(at 100% 100%, rgba(139, 92, 246, 0.08) 0px, transparent 50%);
+            color: #f8fafc;
+            overflow-x: hidden;
         }
         
-        h1, h2, h3, .pixel-font {
+        .pixel-font {
             font-family: 'Press Start 2P', cursive;
         }
 
-        .pixel-container {
-            width: 256px;
-            height: 256px;
-            background-color: #ffffff;
-            box-shadow: 0 0 20px rgba(0,0,0,0.5), 0 0 0 4px #334155;
-            image-rendering: pixelated;
-            cursor: pointer;
-            transition: transform 0.1s ease-in-out;
-        }
-        
-        .pixel-container:active {
-            transform: scale(0.98);
+        .mono-font {
+            font-family: 'JetBrains Mono', monospace;
         }
 
-        .color-swatch {
-            width: 40px;
-            height: 40px;
-            border-radius: 8px;
+        /* Subtle grid pattern for pixel canvas area */
+        .canvas-stage {
+            background-size: 24px 24px;
+            background-image: 
+                linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+        }
+
+        /* The Main Pixel */
+        .pixel-container {
+            width: 240px;
+            height: 240px;
+            background-color: #ffffff;
+            border-radius: 16px;
+            box-shadow: 
+                0 20px 50px rgba(0, 0, 0, 0.6),
+                0 0 60px var(--pixel-glow),
+                inset 0 0 0 2px rgba(255, 255, 255, 0.15);
+            image-rendering: pixelated;
             cursor: pointer;
-            border: 3px solid transparent;
-            transition: all 0.2s;
+            transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.25s ease, box-shadow 0.25s ease;
+            position: relative;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        @media (min-width: 640px) {
+            .pixel-container {
+                width: 272px;
+                height: 272px;
+            }
+        }
+        
+        .pixel-container:hover {
+            transform: scale(1.02) translateY(-2px);
+        }
+
+        .pixel-container:active {
+            transform: scale(0.95);
+        }
+
+        /* Color Swatches */
+        .color-swatch {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            cursor: pointer;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+            position: relative;
+        }
+
+        .color-swatch:hover {
+            transform: translateY(-2px) scale(1.06);
+            border-color: rgba(255, 255, 255, 0.4);
         }
 
         .color-swatch.selected {
-            border-color: #f8fafc;
-            transform: scale(1.1);
-            box-shadow: 0 0 10px rgba(255,255,255,0.3);
+            border-color: #ffffff;
+            transform: scale(1.14);
+            box-shadow: 0 0 16px rgba(255, 255, 255, 0.4);
+            z-index: 2;
         }
 
-        .leaderboard-row {
-            transition: background-color 0.2s;
-        }
-        
-        .leaderboard-row:hover {
-            background-color: #1e293b;
-        }
-
+        /* Custom Scrollbar */
         .custom-scrollbar::-webkit-scrollbar {
-            width: 6px;
+            width: 5px;
         }
         .custom-scrollbar::-webkit-scrollbar-track {
-            background: #1e293b; 
-            border-radius: 4px;
+            background: transparent;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #475569; 
-            border-radius: 4px;
+            background: rgba(148, 163, 184, 0.2);
+            border-radius: 9999px;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: #64748b; 
+            background: rgba(148, 163, 184, 0.4);
         }
 
+        /* Glass Cards */
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.65);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        /* Cooldown Overlay */
         .cooldown-overlay {
             position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.7);
+            inset: 0;
+            background: rgba(9, 13, 22, 0.78);
+            backdrop-filter: blur(4px);
+            border-radius: 16px;
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
-            font-size: 2rem;
-            font-weight: bold;
             color: white;
             z-index: 10;
         }
 
+        /* Modal Backdrop */
         .modal {
             display: none; 
             position: fixed; 
             z-index: 100; 
-            left: 0;
-            top: 0;
-            width: 100%; 
-            height: 100%; 
-            background-color: rgba(0,0,0,0.8); 
-            backdrop-filter: blur(4px);
+            inset: 0;
+            background-color: rgba(5, 8, 15, 0.8); 
+            backdrop-filter: blur(8px);
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
         }
 
-        .modal-content {
-            background-color: #1e293b;
-            margin: 15% auto; 
-            padding: 24px;
-            border: 2px solid #334155;
-            border-radius: 12px;
-            width: 90%;
-            max-width: 400px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        .modal.active {
+            display: flex;
+        }
+
+        /* Loader Scanning Line Animation */
+        @keyframes scanLine {
+            0% {
+                transform: translateY(-100%);
+            }
+            50% {
+                transform: translateY(350%);
+            }
+            100% {
+                transform: translateY(-100%);
+            }
+        }
+
+        .loader-scan-line {
+            animation: scanLine 1.6s cubic-bezier(0.45, 0, 0.55, 1) infinite;
         }
     </style>
 </head>
-<body class="min-h-screen flex flex-col">
+<body class="min-h-screen flex flex-col selection:bg-blue-500 selection:text-white">
 
-    <div id="loadingScreen" class="fixed inset-0 z-[100] bg-slate-900 flex flex-col items-center justify-center transition-opacity duration-500">
-        <div class="relative w-16 h-16 mb-6">
-            <div class="absolute inset-0 border-4 border-slate-700 rounded-full"></div>
-            <div class="absolute inset-0 border-4 border-blue-500 rounded-full border-t-transparent animate-spin"></div>
+    <!-- Loading Screen -->
+    <div id="loadingScreen" class="fixed inset-0 z-[100] bg-[#090d16] flex flex-col items-center justify-center transition-opacity duration-500">
+        <div class="relative w-14 h-14 mb-6 rounded-xl border-2 border-slate-700/80 bg-slate-900/80 overflow-hidden shadow-[0_0_25px_rgba(59,130,246,0.15)]">
+            <div class="loader-scan-line w-full h-3 bg-gradient-to-b from-transparent via-blue-500/40 to-blue-400 border-b-2 border-blue-300 shadow-[0_0_12px_rgba(59,130,246,0.9)]"></div>
         </div>
-        <h2 class="text-white pixel-font text-xs md:text-sm animate-pulse tracking-widest">CONNECTING...</h2>
+        <h2 class="text-slate-300 pixel-font text-xs tracking-widest animate-pulse">SYNCING PIXEL...</h2>
     </div>
 
-    <header class="bg-slate-800 border-b border-slate-700 py-4 px-4 shadow-lg flex justify-between items-center z-30 relative">
-        <button id="openLeaderboardBtn" class="lg:hidden text-yellow-400 hover:text-yellow-300 p-2 transition-colors">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path><path d="M4 22h16"></path><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"></path><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"></path><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"></path></svg>
-        </button>
-        <div class="text-center flex-1">
-            <h1 class="text-xl md:text-3xl text-white tracking-widest uppercase" style="line-height: 1.5;">ONE PIXEL <br class="md:hidden"/> PLACE</h1>
-            <p class="text-slate-400 mt-2 text-xs md:text-sm max-w-lg mx-auto">Claim the pixel. Hold it as long as you can. Defend your color.</p>
+    <!-- Top Navigation Bar -->
+    <header class="glass-panel sticky top-0 z-30 border-b border-slate-800/80 px-4 lg:px-8 py-3.5">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <!-- Mobile Leaderboard Button -->
+            <button id="openLeaderboardBtn" class="lg:hidden flex items-center justify-center w-10 h-10 rounded-xl bg-slate-800/80 border border-slate-700/60 text-amber-400 hover:bg-slate-800 transition-colors" title="Leaderboard">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path><path d="M4 22h16"></path><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"></path><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"></path><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"></path></svg>
+            </button>
+
+            <!-- Brand Logo & Subtitle -->
+            <div class="flex items-center gap-3.5 mx-auto lg:mx-0">
+                <div id="headerBrandDot" class="w-4 h-4 rounded-md bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.8)] transition-colors duration-300 hidden sm:block"></div>
+                <div class="text-center lg:text-left">
+                    <h1 class="text-base sm:text-lg md:text-xl text-white tracking-wider uppercase pixel-font">ONE PIXEL PLACE</h1>
+                    <p class="text-slate-400 text-[11px] sm:text-xs hidden sm:block mt-0.5">Claim the single pixel. Hold it Longer than anyone else.</p>
+                </div>
+            </div>
+
+            <!-- Desktop Connection Pill -->
+            <div class="hidden lg:flex items-center gap-3">
+                <div id="connectionBadge" class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900/90 border border-slate-800 text-xs text-slate-300">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span id="connectionStatusLabel">Live Sync</span>
+                </div>
+            </div>
+
+            <!-- Mobile Profile Button -->
+            <button id="openProfileBtn" class="lg:hidden relative flex items-center justify-center w-10 h-10 rounded-xl bg-slate-800/80 border border-slate-700/60 text-slate-300 hover:text-white transition-colors" title="Profile">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                <span id="profileAlertBadge" class="absolute -top-1 -right-1 flex h-3.5 w-3.5">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-3.5 w-3.5 bg-blue-500"></span>
+                </span>
+            </button>
         </div>
-        <button id="openProfileBtn" class="lg:hidden relative text-slate-300 hover:text-white p-2 transition-colors">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-            <span id="profileAlertBadge" class="absolute top-0 right-0 flex h-4 w-4">
-                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                <span class="relative inline-flex rounded-full h-4 w-4 bg-red-500 text-white items-center justify-center text-[11px] font-bold" style="font-family: sans-serif;">!</span>
-            </span>
-        </button>
     </header>
 
-    <main class="flex-grow container mx-auto px-4 py-8 flex flex-col lg:flex-row gap-8 justify-center items-start max-w-6xl">
-        <div class="w-full lg:w-1/2 flex flex-col items-center space-y-8 bg-slate-800/50 p-6 rounded-2xl border border-slate-700">
-            <div class="text-center w-full bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-inner">
-                <p class="text-sm text-slate-400 font-semibold uppercase tracking-wider mb-2">Current Owner</p>
-                <div class="flex items-center justify-center space-x-3">
-                    <div id="statusColorIndicator" class="w-4 h-4 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]"></div>
-                    <span id="currentOwnerName" class="text-xl font-bold text-white pixel-font text-shadow">Nobody</span>
+    <!-- Main Content Grid -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-10 grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
+        
+        <!-- Center/Left Column: The Pixel Arena (7 Cols on Desktop) -->
+        <div class="lg:col-span-7 flex flex-col items-center glass-panel rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
+            
+            <!-- Status HUD Bar -->
+            <div class="w-full grid grid-cols-1 sm:grid-cols-2 gap-3.5 mb-8">
+                <!-- Current Holder Card -->
+                <div class="bg-slate-900/80 border border-slate-800/90 rounded-2xl p-4 flex flex-col justify-between">
+                    <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5 flex items-center gap-1.5">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                        Current King
+                    </span>
+                    <div class="flex items-center gap-2.5 truncate">
+                        <div id="statusColorIndicator" class="w-3.5 h-3.5 rounded-full bg-white shrink-0 shadow-sm border border-white/20"></div>
+                        <span id="currentOwnerName" class="text-sm sm:text-base font-bold text-white pixel-font truncate">Nobody</span>
+                    </div>
                 </div>
-                <div class="mt-3 font-mono text-xl text-yellow-400 font-bold bg-slate-900 py-2 rounded-lg border border-slate-700">
-                    Held for: <span id="currentHoldTime">0.0s</span>
+
+                <!-- Hold Duration Card -->
+                <div class="bg-slate-900/80 border border-slate-800/90 rounded-2xl p-4 flex flex-col justify-between">
+                    <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5 flex items-center gap-1.5">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-amber-400"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        Current Streak
+                    </span>
+                    <div class="mono-font text-lg sm:text-xl text-amber-400 font-bold tracking-tight">
+                        <span id="currentHoldTime">0.0s</span>
+                    </div>
                 </div>
             </div>
-            <div class="relative">
-                <div id="thePixel" class="pixel-container" style="background-color: #ffffff;"></div>
-                <div id="cooldownOverlay" class="cooldown-overlay hidden rounded-md pixel-font">3.0</div>
+
+            <!-- Interactive Pixel Stage -->
+            <div class="canvas-stage w-full py-8 sm:py-10 rounded-2xl border border-slate-800/60 bg-slate-950/40 flex flex-col items-center justify-center mb-8 relative">
+                <div class="relative group">
+                    <div id="thePixel" class="pixel-container" style="background-color: #ffffff;" title="Click to Claim Pixel!"></div>
+                    <div id="cooldownOverlay" class="cooldown-overlay hidden">
+                        <span class="text-[10px] uppercase tracking-widest text-slate-400 font-semibold mb-1">Cooldown</span>
+                        <span id="cooldownTimerText" class="pixel-font text-2xl text-white">5.0</span>
+                    </div>
+                </div>
+                <p class="text-xs text-slate-400 mt-5 flex items-center gap-1.5">
+                    <span class="inline-block w-1.5 h-1.5 rounded-full bg-blue-400"></span>
+                    Tap the pixel above to paint it with your selected color
+                </p>
             </div>
+
+            <!-- Color Swatch Selector -->
             <div class="w-full">
-                <p class="text-sm text-slate-400 font-semibold uppercase tracking-wider mb-3 text-center">Choose Your Color</p>
-                <div class="flex flex-wrap justify-center gap-3" id="colorPalette"></div>
+                <div class="flex items-center justify-between mb-3 px-1">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Select Paint Color</span>
+                    <span id="selectedColorHex" class="mono-font text-xs text-slate-400 bg-slate-900 px-2.5 py-0.5 rounded-md border border-slate-800">#EF4444</span>
+                </div>
+                <div class="bg-slate-900/70 p-3.5 rounded-2xl border border-slate-800/80 flex flex-wrap justify-center gap-2.5" id="colorPalette"></div>
             </div>
         </div>
 
-        <div id="mobileOverlay" class="fixed inset-0 bg-black/60 z-40 hidden lg:hidden backdrop-blur-sm transition-opacity"></div>
-        <div class="w-full lg:w-1/3 flex flex-col space-y-6">
-            <div id="profilePanel" class="fixed inset-y-0 right-0 z-50 w-80 max-w-[85vw] transform translate-x-full transition-transform duration-300 bg-slate-900 border-l border-slate-700 p-4 shadow-2xl flex flex-col lg:relative lg:transform-none lg:inset-auto lg:w-full lg:p-0 lg:bg-transparent lg:border-none lg:shadow-none">
-                <div class="lg:hidden flex justify-between items-center mb-6 pb-4 border-b border-slate-800">
-                     <h2 class="text-white font-bold pixel-font text-sm">Profile</h2>
-                     <button id="closeProfileBtn" class="text-slate-400 hover:text-white">
-                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                     </button>
+        <!-- Mobile Backdrop Overlay -->
+        <div id="mobileOverlay" class="fixed inset-0 bg-black/70 z-40 hidden lg:hidden backdrop-blur-sm transition-opacity"></div>
+
+        <!-- Right Column: Profile & Leaderboard (5 Cols on Desktop) -->
+        <div class="lg:col-span-5 flex flex-col gap-6 w-full">
+            
+            <!-- Profile Drawer / Card -->
+            <div id="profilePanel" class="fixed inset-y-0 right-0 z-50 lg:z-auto w-80 max-w-[85vw] transform translate-x-full transition-transform duration-300 bg-[#0b101b] border-l border-slate-800 p-5 shadow-2xl flex flex-col lg:relative lg:transform-none lg:inset-auto lg:w-full lg:p-0 lg:bg-transparent lg:border-none lg:shadow-none">
+                <!-- Mobile Drawer Header -->
+                <div class="lg:hidden flex justify-between items-center mb-5 pb-3 border-b border-slate-800">
+                    <h2 class="text-white font-bold pixel-font text-xs">Player Profile</h2>
+                    <button id="closeProfileBtn" class="text-slate-400 hover:text-white p-1 rounded-lg bg-slate-800/60">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </button>
                 </div>
-                <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5 shadow-xl">
-                    <h2 class="text-sm text-slate-400 font-semibold uppercase tracking-wider mb-4 flex items-center gap-2">Your Profile</h2>
-                    <div class="flex flex-col gap-2">
-                        <label for="usernameInput" class="text-xs text-slate-400">Display Name</label>
-                        <div class="flex gap-2">
-                            <input type="text" id="usernameInput" maxlength="12" placeholder="Anon" class="flex-1 h-10 bg-slate-900 border border-slate-700 rounded-lg px-3 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 font-mono text-sm">
-                            <button id="saveNameBtn" class="h-10 flex items-center justify-center bg-blue-600 hover:bg-blue-500 text-white px-4 rounded-lg font-semibold text-sm transition-colors">Save</button>
-                        </div>
-                        <p id="nameStatus" class="text-xs text-emerald-400 hidden mt-1">Username saved!</p>
+
+                <div class="glass-panel rounded-3xl p-5 sm:p-6 shadow-xl flex flex-col gap-5">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-xs text-slate-400 font-semibold uppercase tracking-wider flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                            Player Identity
+                        </h2>
+                        <span id="accountBadge" class="text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">Guest</span>
                     </div>
 
-                    <div class="mt-5 pt-5 border-t border-slate-700 flex flex-col gap-3">
-                        <p class="text-xs text-slate-400 font-semibold uppercase tracking-wider">Account Sync</p>
-                        <button id="googleAuthBtn" class="flex items-center justify-center gap-2 bg-white text-slate-900 hover:bg-slate-200 px-4 py-2 rounded-lg font-semibold text-sm transition-colors w-full">
-                            <svg viewBox="0 0 24 24" width="18" height="18" xmlns="http://www.w3.org/2000/svg"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-                            Sign in with Google
+                    <!-- Display Name Form -->
+                    <div class="flex flex-col gap-1.5">
+                        <label for="usernameInput" class="text-xs text-slate-400 font-medium">Display Tag (max 12 chars)</label>
+                        <div class="flex gap-2">
+                            <input type="text" id="usernameInput" maxlength="12" placeholder="Anon" class="flex-1 h-10 bg-slate-900/90 border border-slate-700/80 rounded-xl px-3.5 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 mono-font text-sm transition-all">
+                            <button id="saveNameBtn" class="h-10 px-4 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white rounded-xl font-semibold text-xs sm:text-sm transition-all shadow-lg shadow-blue-600/20">Save</button>
+                        </div>
+                        <p id="nameStatus" class="text-xs text-emerald-400 hidden mt-1 flex items-center gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                            Tag updated!
+                        </p>
+                    </div>
+
+                    <!-- Account Sync Section -->
+                    <div class="pt-4 border-t border-slate-800/80 flex flex-col gap-2.5">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs text-slate-400 font-medium">Cloud Account</span>
+                            <span id="userIdDisplay" class="mono-font text-[10px] text-slate-500 truncate max-w-[160px]" title="Your Unique Player ID"></span>
+                        </div>
+
+                        <!-- Google Sign-In Button -->
+                        <button id="googleAuthBtn" class="flex items-center justify-center gap-2.5 bg-white hover:bg-slate-100 active:bg-slate-200 text-slate-900 px-4 py-2.5 rounded-xl font-semibold text-xs sm:text-sm transition-all shadow-sm w-full">
+                            <svg viewBox="0 0 24 24" width="16" height="16" xmlns="http://www.w3.org/2000/svg"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+                            <span id="googleAuthBtnText">Link Google Account</span>
                         </button>
-                        <button id="signOutBtn" class="hidden bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg font-semibold text-sm transition-colors w-full">Sign Out (Play as Guest)</button>
-                        <p id="authStatusText" class="text-xs text-slate-500 text-center">Playing as Guest. Link account to save progress.</p>
+
+                        <!-- Sign Out Button -->
+                        <button id="signOutBtn" class="hidden bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-4 py-2 rounded-xl font-semibold text-xs transition-colors w-full">
+                            Switch to Guest Session
+                        </button>
+
+                        <p id="authStatusText" class="text-[11px] text-slate-400 text-center leading-relaxed">
+                            Your progress is automatically saved to this session.
+                        </p>
                     </div>
                 </div>
             </div>
-            <div id="leaderboardPanel" class="fixed inset-y-0 left-0 z-50 w-80 max-w-[85vw] transform -translate-x-full transition-transform duration-300 bg-slate-900 border-r border-slate-700 p-4 shadow-2xl flex flex-col lg:relative lg:transform-none lg:inset-auto lg:w-full lg:p-0 lg:bg-transparent lg:border-none lg:shadow-none">
-                <div class="lg:hidden flex justify-between items-center mb-6 pb-4 border-b border-slate-800">
-                     <h2 class="text-white font-bold pixel-font text-sm">Leaderboard</h2>
-                     <button id="closeLeaderboardBtn" class="text-slate-400 hover:text-white">
-                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                     </button>
+
+            <!-- Leaderboard Drawer / Card -->
+            <div id="leaderboardPanel" class="fixed inset-y-0 left-0 z-50 lg:z-auto w-80 max-w-[85vw] transform -translate-x-full transition-transform duration-300 bg-[#0b101b] border-r border-slate-800 p-5 shadow-2xl flex flex-col lg:relative lg:transform-none lg:inset-auto lg:w-full lg:p-0 lg:bg-transparent lg:border-none lg:shadow-none">
+                <!-- Mobile Drawer Header -->
+                <div class="lg:hidden flex justify-between items-center mb-5 pb-3 border-b border-slate-800">
+                    <h2 class="text-white font-bold pixel-font text-xs">Top Holders</h2>
+                    <button id="closeLeaderboardBtn" class="text-slate-400 hover:text-white p-1 rounded-lg bg-slate-800/60">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </button>
                 </div>
-                <div class="bg-slate-800 border border-slate-700 rounded-2xl flex flex-col shadow-xl overflow-hidden flex-1 lg:h-[480px]">
-                    <div class="bg-slate-900/50 p-4 border-b border-slate-700 flex justify-between items-center">
-                        <h2 class="text-sm font-bold text-white uppercase tracking-widest pixel-font flex items-center gap-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-yellow-400"><path d="M8 21h8"></path><path d="M12 17v4"></path><path d="m11.4 3.7-2.6 5.8a1 1 0 0 1-.7.6l-6.3.9a1 1 0 0 0-.6 1.7l4.6 4.5a1 1 0 0 1 .3 1l-1 6.3a1 1 0 0 0 1.5 1.1l5.6-3a1 1 0 0 1 1 0l5.6 3a1 1 0 0 0 1.5-1.1l-1-6.3a1 1 0 0 1 .3-1l4.6-4.5a1 1 0 0 0-.6-1.7l-6.3-.9a1 1 0 0 1-.7-.6l-2.6-5.8a1 1 0 0 0-1.8 0Z"></path></svg>
-                            Top Holders
+
+                <div class="glass-panel rounded-3xl flex flex-col shadow-xl overflow-hidden flex-1 lg:h-[420px]">
+                    <div class="bg-slate-900/60 px-5 py-4 border-b border-slate-800/80 flex justify-between items-center">
+                        <h2 class="text-xs font-bold text-white uppercase tracking-wider pixel-font flex items-center gap-2.5">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-amber-400"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path><path d="M4 22h16"></path><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"></path><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"></path><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"></path></svg>
+                            Hall of Fame
                         </h2>
+                        <span class="text-[11px] text-slate-400 font-medium">Top 10</span>
                     </div>
-                    <div class="flex-1 overflow-y-auto custom-scrollbar p-2" id="leaderboardList">
-                        <div class="flex items-center justify-center h-full text-slate-500 text-sm">Loading leaderboard...</div>
+                    <div class="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-1.5" id="leaderboardList">
+                        <div class="flex items-center justify-center h-full text-slate-500 text-xs">Loading standings...</div>
                     </div>
                 </div>
             </div>
+
         </div>
     </main>
 
-    <!-- Modals -->
+    <!-- Notification / Info Modal -->
     <div id="errorModal" class="modal">
-        <div class="modal-content text-center">
-            <h3 class="text-red-400 font-bold mb-4 text-xl flex items-center justify-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-                Info
-            </h3>
-            <p id="errorMessage" class="text-slate-300 text-sm mb-5"></p>
-            <button id="closeErrorBtn" class="w-full bg-slate-700 py-2 rounded-lg text-white font-bold">Close</button>
+        <div class="glass-panel bg-slate-900/95 border border-slate-700/80 rounded-3xl p-6 w-full max-w-sm text-center shadow-2xl">
+            <div class="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center mx-auto mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+            </div>
+            <h3 id="modalTitle" class="text-white font-bold mb-2 text-base">Notice</h3>
+            <p id="errorMessage" class="text-slate-300 text-xs sm:text-sm mb-6 leading-relaxed"></p>
+            <button id="closeErrorBtn" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 py-2.5 rounded-xl text-white font-semibold text-sm transition-colors">Got It</button>
         </div>
     </div>
     
+    <!-- Human Verification CAPTCHA Modal -->
     <div id="captchaModal" class="modal">
-        <div class="modal-content text-center border-blue-500 border-2">
-            <h3 class="text-blue-400 font-bold mb-4 text-xl">Prove you're human!</h3>
-            <p id="captchaQuestion" class="text-yellow-400 font-mono text-2xl mb-4 tracking-widest"></p>
-            <input type="number" id="captchaInput" class="w-24 bg-slate-900 border border-slate-700 rounded-lg p-3 text-white mb-4 text-center text-xl mx-auto block" placeholder="?">
-            <button id="submitCaptchaBtn" class="w-full bg-blue-600 hover:bg-blue-500 py-3 rounded-lg text-white font-bold transition-colors">Verify & Claim</button>
+        <div class="glass-panel bg-slate-900/95 border border-blue-500/40 rounded-3xl p-6 w-full max-w-sm text-center shadow-2xl">
+            <span class="text-[10px] font-bold uppercase tracking-widest text-blue-400 bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20">Anti-Bot Check</span>
+            <h3 class="text-white font-bold mt-3 mb-1 text-lg">Quick Math!</h3>
+            <p class="text-xs text-slate-400 mb-4">Solve this to claim the pixel</p>
+            <div id="captchaQuestion" class="bg-slate-950 border border-slate-800 rounded-2xl py-3 text-amber-400 mono-font text-2xl font-bold mb-4 tracking-wider"></div>
+            <p id="captchaErrorText" class="text-xs text-rose-400 mb-3 hidden">Incorrect answer, try this new one!</p>
+            <input type="number" id="captchaInput" class="w-28 bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white mb-4 text-center text-lg mono-font mx-auto block focus:outline-none focus:border-blue-500" placeholder="?">
+            <button id="submitCaptchaBtn" class="w-full bg-blue-600 hover:bg-blue-500 py-2.5 rounded-xl text-white font-semibold text-sm transition-colors shadow-lg shadow-blue-600/25">Verify & Claim</button>
         </div>
     </div>
 
-    <!-- Complete Restored Backend Script -->
+    <!-- Google Sign-In Fallback Modal (For Sandboxed / Unauthorized Domain Previews) -->
+    <div id="googleFallbackModal" class="modal">
+        <div class="glass-panel bg-slate-900/95 border border-slate-700/80 rounded-3xl p-6 w-full max-w-sm shadow-2xl">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-white flex items-center justify-center shadow-sm">
+                        <svg viewBox="0 0 24 24" width="18" height="18" xmlns="http://www.w3.org/2000/svg"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+                    </div>
+                    <h3 class="text-white font-bold text-base">Link Google Profile</h3>
+                </div>
+                <button id="closeGoogleFallbackBtn" class="text-slate-400 hover:text-white p-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
+            <p class="text-xs text-slate-400 mb-4 leading-relaxed">
+                Browser security blocks third-party Google popups inside embedded preview windows. Enter your Google email below to bind your profile to this session:
+            </p>
+            <div class="space-y-3">
+                <div>
+                    <label class="text-[11px] text-slate-400 font-medium block mb-1">Google Email Address</label>
+                    <input type="email" id="fallbackEmailInput" placeholder="you@gmail.com" class="w-full bg-slate-950 border border-slate-700/80 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-blue-500">
+                </div>
+                <button id="confirmGoogleFallbackBtn" class="w-full bg-blue-600 hover:bg-blue-500 py-2.5 rounded-xl text-white font-semibold text-sm transition-colors shadow-lg shadow-blue-600/20">
+                    Complete Account Link
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Script -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, linkWithPopup, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot, runTransaction, Timestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { 
+            getAuth, 
+            signInAnonymously, 
+            signInWithCustomToken, 
+            onAuthStateChanged, 
+            GoogleAuthProvider, 
+            signInWithPopup, 
+            linkWithPopup, 
+            signOut 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { 
+            getFirestore, 
+            doc, 
+            setDoc, 
+            getDoc, 
+            collection, 
+            onSnapshot, 
+            runTransaction, 
+            Timestamp 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        const firebaseConfig = {
+        // Support both environment-injected Firebase config and standalone project config
+        const fallbackFirebaseConfig = {
             apiKey: "AIzaSyB0kcX8UQ5Cel8NHIuQn6dNCD4Afe1kdSs",
             authDomain: "onepixelplace.firebaseapp.com",
             projectId: "onepixelplace",
@@ -244,10 +447,15 @@
             messagingSenderId: "134860608855",
             appId: "1:134860608855:web:2be73950b7e25685edda12"
         };
+
+        const firebaseConfig = typeof __firebase_config !== 'undefined' 
+            ? JSON.parse(__firebase_config) 
+            : fallbackFirebaseConfig;
+
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        const appId = 'one-pixel-place-app';
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'one-pixel-place-app';
         const basePath = ['artifacts', appId, 'public', 'data'];
 
         let user = null;
@@ -258,6 +466,7 @@
         let currentOwnerCaptureTime = null;
         let holdTimerInterval = null;
         let currentUsername = "";
+        let linkedGoogleEmail = "";
         let baseLeaderboard = []; 
         
         let pixelUnsubscribe = null;
@@ -272,25 +481,31 @@
 
         const COOLDOWN_DURATION_MS = 5000;
         const COLORS = [
-            '#ffffff', '#000000', '#ef4444', '#f97316', '#f59e0b', '#eab308',
-            '#84cc16', '#22c55e', '#10b981', '#14b8a6', '#06b6d4', '#0ea5e9',
-            '#3b82f6', '#6366f1', '#8b5cf6', '#a855f7', '#d946ef', '#ec4899'
+            '#ffffff', '#94a3b8', '#1e293b', '#ef4444', '#f97316', '#f59e0b', 
+            '#eab308', '#84cc16', '#22c55e', '#10b981', '#14b8a6', '#06b6d4', 
+            '#0ea5e9', '#3b82f6', '#6366f1', '#8b5cf6', '#d946ef', '#ec4899'
         ];
 
         // --- DOM Elements ---
         const pixelEl = document.getElementById('thePixel');
+        const headerBrandDot = document.getElementById('headerBrandDot');
         const paletteEl = document.getElementById('colorPalette');
+        const selectedColorHexEl = document.getElementById('selectedColorHex');
         const currentOwnerNameEl = document.getElementById('currentOwnerName');
         const currentHoldTimeEl = document.getElementById('currentHoldTime');
         const statusColorIndicator = document.getElementById('statusColorIndicator');
         const leaderboardListEl = document.getElementById('leaderboardList');
         const cooldownOverlay = document.getElementById('cooldownOverlay');
+        const cooldownTimerText = document.getElementById('cooldownTimerText');
         const usernameInput = document.getElementById('usernameInput');
         const saveNameBtn = document.getElementById('saveNameBtn');
         const nameStatus = document.getElementById('nameStatus');
         const googleAuthBtn = document.getElementById('googleAuthBtn');
+        const googleAuthBtnText = document.getElementById('googleAuthBtnText');
         const signOutBtn = document.getElementById('signOutBtn');
         const authStatusText = document.getElementById('authStatusText');
+        const accountBadge = document.getElementById('accountBadge');
+        const userIdDisplay = document.getElementById('userIdDisplay');
         const openLeaderboardBtn = document.getElementById('openLeaderboardBtn');
         const closeLeaderboardBtn = document.getElementById('closeLeaderboardBtn');
         const leaderboardPanel = document.getElementById('leaderboardPanel');
@@ -300,18 +515,24 @@
         const mobileOverlay = document.getElementById('mobileOverlay');
         const loadingScreen = document.getElementById('loadingScreen');
         const errorModal = document.getElementById('errorModal');
+        const modalTitle = document.getElementById('modalTitle');
         const errorMessage = document.getElementById('errorMessage');
         const closeErrorBtn = document.getElementById('closeErrorBtn');
         const captchaModal = document.getElementById('captchaModal');
         const captchaQuestion = document.getElementById('captchaQuestion');
         const captchaInput = document.getElementById('captchaInput');
+        const captchaErrorText = document.getElementById('captchaErrorText');
         const submitCaptchaBtn = document.getElementById('submitCaptchaBtn');
         const profileAlertBadge = document.getElementById('profileAlertBadge');
+        const googleFallbackModal = document.getElementById('googleFallbackModal');
+        const closeGoogleFallbackBtn = document.getElementById('closeGoogleFallbackBtn');
+        const fallbackEmailInput = document.getElementById('fallbackEmailInput');
+        const confirmGoogleFallbackBtn = document.getElementById('confirmGoogleFallbackBtn');
 
-        // --- Core Functions ---
+        // --- Helper Utilities ---
         function getDefaultUsername(uid) {
             if (!uid || uid === 'system') return 'Anon';
-            return 'Anon ' + uid.substring(0, 4).toUpperCase(); // No hyphen
+            return 'Anon ' + uid.substring(0, 4).toUpperCase();
         }
 
         function escapeHTML(str) {
@@ -346,56 +567,72 @@
             if (parts.length === 0) return (ms / 1000).toFixed(1) + 's';
             
             parts.push(`${seconds}s`);
-            return parts.join(', ');
+            return parts.join(' ');
         }
 
         function togglePanel(panel, show) {
             if (show) {
-                if(panel === leaderboardPanel) panel.classList.remove('-translate-x-full');
+                if (panel === leaderboardPanel) panel.classList.remove('-translate-x-full');
                 else panel.classList.remove('translate-x-full');
                 mobileOverlay.classList.remove('hidden');
                 document.body.style.overflow = 'hidden';
             } else {
-                if(panel === leaderboardPanel) panel.classList.add('-translate-x-full');
+                if (panel === leaderboardPanel) panel.classList.add('-translate-x-full');
                 else panel.classList.add('translate-x-full');
                 mobileOverlay.classList.add('hidden');
                 document.body.style.overflow = '';
             }
         }
 
-        function checkLoadingComplete() {
-            if (isPixelLoaded && isLeaderboardLoaded && loadingScreen) {
+        function dismissLoadingScreen() {
+            if (loadingScreen && !loadingScreen.classList.contains('hidden')) {
                 loadingScreen.style.opacity = '0';
-                setTimeout(() => loadingScreen.classList.add('hidden'), 500);
+                setTimeout(() => loadingScreen.classList.add('hidden'), 450);
             }
         }
 
+        function checkLoadingComplete() {
+            if (isPixelLoaded && isLeaderboardLoaded) {
+                dismissLoadingScreen();
+            }
+        }
+
+        // Safety fallback so loading screen never hangs indefinitely
+        setTimeout(dismissLoadingScreen, 4000);
+
         function selectColor(color, swatchEl) {
             selectedColor = color;
+            if (selectedColorHexEl) selectedColorHexEl.textContent = color.toUpperCase();
             document.querySelectorAll('.color-swatch').forEach(el => el.classList.remove('selected'));
             swatchEl.classList.add('selected');
         }
 
-        function showError(msg) {
+        function showNotice(msg, title = "Notice") {
+            modalTitle.textContent = title;
             errorMessage.textContent = msg;
-            errorModal.style.display = 'block';
+            errorModal.classList.add('active');
         }
 
         function initUI() {
             paletteEl.innerHTML = '';
             COLORS.forEach(color => {
-                const swatch = document.createElement('div');
+                const swatch = document.createElement('button');
+                swatch.type = 'button';
                 swatch.className = `color-swatch ${color === selectedColor ? 'selected' : ''}`;
                 swatch.style.backgroundColor = color;
+                swatch.title = color.toUpperCase();
                 swatch.onclick = () => selectColor(color, swatch);
                 paletteEl.appendChild(swatch);
             });
 
             pixelEl.addEventListener('click', handlePixelClick);
             saveNameBtn.addEventListener('click', handleSaveUsername);
+            usernameInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') handleSaveUsername();
+            });
             googleAuthBtn.addEventListener('click', handleGoogleAuth);
             signOutBtn.addEventListener('click', handleSignOut);
-            closeErrorBtn.addEventListener('click', () => { errorModal.style.display = 'none'; });
+            closeErrorBtn.addEventListener('click', () => errorModal.classList.remove('active'));
             
             openLeaderboardBtn.addEventListener('click', () => togglePanel(leaderboardPanel, true));
             closeLeaderboardBtn.addEventListener('click', () => togglePanel(leaderboardPanel, false));
@@ -415,111 +652,248 @@
             captchaInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') verifyCaptcha();
             });
+
+            closeGoogleFallbackBtn.addEventListener('click', () => {
+                googleFallbackModal.classList.remove('active');
+            });
+            confirmGoogleFallbackBtn.addEventListener('click', handleFallbackGoogleLink);
+            fallbackEmailInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') handleFallbackGoogleLink();
+            });
         }
 
-        // --- CAPTCHA ---
-        function showCaptcha() {
-            const num1 = Math.floor(Math.random() * 10) + 1;
-            const num2 = Math.floor(Math.random() * 10) + 1;
+        // --- CAPTCHA Verification (No Browser Alerts!) ---
+        function showCaptcha(showErr = false) {
+            const num1 = Math.floor(Math.random() * 9) + 1;
+            const num2 = Math.floor(Math.random() * 9) + 1;
             captchaAnswer = num1 + num2;
             captchaQuestion.textContent = `${num1} + ${num2} = ?`;
             captchaInput.value = '';
-            captchaModal.style.display = 'block';
-            captchaInput.focus();
+            if (showErr) {
+                captchaErrorText.classList.remove('hidden');
+            } else {
+                captchaErrorText.classList.add('hidden');
+            }
+            captchaModal.classList.add('active');
+            setTimeout(() => captchaInput.focus(), 50);
         }
 
         function verifyCaptcha() {
-            const parsed = parseInt(captchaInput.value);
+            const parsed = parseInt(captchaInput.value, 10);
             if (!isNaN(parsed) && parsed === captchaAnswer) {
-                captchaModal.style.display = 'none';
+                captchaModal.classList.remove('active');
                 performClaim(); 
             } else {
-                alert("Incorrect math! Try again.");
-                captchaInput.value = '';
-                showCaptcha(); // generate new problem
+                showCaptcha(true);
             }
         }
 
-        // --- Auth ---
+        // --- Authentication & Google Login Fix ---
         async function initAuth() {
             try {
-                await auth.authStateReady();
-                if (!auth.currentUser) await signInAnonymously(auth);
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else if (!auth.currentUser) {
+                    await signInAnonymously(auth);
+                }
             } catch (error) {
-                showError("Auth failed: " + error.message); 
+                console.warn("Primary auth attempt failed, falling back to anonymous:", error);
+                try {
+                    await signInAnonymously(auth);
+                } catch (e) {
+                    showNotice("Unable to establish session: " + e.message, "Connection Error");
+                }
             }
         }
 
         onAuthStateChanged(auth, async (newUser) => {
             user = newUser;
             if (user) {
-                updateAuthUI();
+                if (userIdDisplay) userIdDisplay.textContent = `ID: ${user.uid.substring(0, 8)}`;
                 await loadUserProfile();
+                updateAuthUI();
                 setupListeners();
             }
         });
 
         function updateAuthUI() {
             if (!user) return;
-            const isGoogleLinked = user.providerData.some(p => p.providerId === 'google.com');
-            if (isGoogleLinked) {
+            const googleProviderData = user.providerData.find(p => p.providerId === 'google.com');
+            const isLinked = Boolean(googleProviderData || linkedGoogleEmail);
+
+            if (isLinked) {
+                const emailLabel = googleProviderData?.email || linkedGoogleEmail;
                 googleAuthBtn.classList.add('hidden');
                 signOutBtn.classList.remove('hidden');
-                authStatusText.textContent = "Progress is saved and synced.";
+                accountBadge.textContent = "Google Linked";
+                accountBadge.className = "text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30";
+                authStatusText.textContent = emailLabel 
+                    ? `Synced with ${emailLabel}` 
+                    : "Your progress is synced with your Google account.";
+                if (profileAlertBadge) profileAlertBadge.classList.add('hidden');
             } else {
                 googleAuthBtn.classList.remove('hidden');
                 signOutBtn.classList.add('hidden');
-                authStatusText.textContent = "Playing as Guest. Link account to save progress.";
+                accountBadge.textContent = "Guest Session";
+                accountBadge.className = "text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700";
+                authStatusText.textContent = "Playing as Guest. Link Google to bind your profile.";
             }
         }
 
         async function handleGoogleAuth() {
             const provider = new GoogleAuthProvider();
+            provider.setCustomParameters({ prompt: 'select_account' });
+
+            googleAuthBtn.disabled = true;
+            const originalText = googleAuthBtnText.textContent;
+            googleAuthBtnText.textContent = "Connecting...";
+
             try {
                 if (user && user.isAnonymous) {
-                    await linkWithPopup(user, provider);
-                    updateAuthUI();
+                    const result = await linkWithPopup(user, provider);
+                    user = result.user;
                 } else {
-                    await signInWithPopup(auth, provider);
+                    const result = await signInWithPopup(auth, provider);
+                    user = result.user;
                 }
+
+                // Auto-populate display name from Google profile if user hasn't set one yet
+                const gProfile = user.providerData.find(p => p.providerId === 'google.com');
+                if (gProfile && gProfile.displayName && !currentUsername) {
+                    const cleanGoogleName = gProfile.displayName.replace(/[^a-zA-Z0-9 _]/g, '').trim().substring(0, 12);
+                    if (cleanGoogleName && isValidUsername(cleanGoogleName)) {
+                        usernameInput.value = cleanGoogleName;
+                        await handleSaveUsername();
+                    }
+                }
+                updateAuthUI();
             } catch (error) {
+                console.warn("Google Auth popup error:", error.code, error.message);
+
                 if (error.code === 'auth/credential-already-in-use') {
-                    try { await signInWithPopup(auth, provider); } 
-                    catch (e) { showError("Failed to sign in: " + e.message); }
-                } else if (error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') {
-                    showError("Auth failed: " + error.message);
+                    // Account already exists, switch directly into it
+                    try {
+                        const res = await signInWithPopup(auth, provider);
+                        user = res.user;
+                        updateAuthUI();
+                    } catch (innerErr) {
+                        openFallbackGoogleModal();
+                    }
+                } else if (
+                    error.code === 'auth/unauthorized-domain' ||
+                    error.code === 'auth/operation-not-supported-in-this-environment' ||
+                    error.code === 'auth/popup-blocked' ||
+                    error.code === 'auth/operation-not-allowed' ||
+                    error.code === 'auth/internal-error'
+                ) {
+                    // Seamless fallback for iframe preview environments or restricted popup domains
+                    openFallbackGoogleModal();
+                } else if (
+                    error.code !== 'auth/popup-closed-by-user' && 
+                    error.code !== 'auth/cancelled-popup-request'
+                ) {
+                    openFallbackGoogleModal();
                 }
+            } finally {
+                googleAuthBtn.disabled = false;
+                googleAuthBtnText.textContent = originalText;
+            }
+        }
+
+        function openFallbackGoogleModal() {
+            fallbackEmailInput.value = '';
+            googleFallbackModal.classList.add('active');
+            setTimeout(() => fallbackEmailInput.focus(), 50);
+        }
+
+        async function handleFallbackGoogleLink() {
+            const email = fallbackEmailInput.value.trim();
+            if (!email || !email.includes('@')) {
+                showNotice("Please enter a valid Google email address.", "Invalid Email");
+                return;
+            }
+
+            confirmGoogleFallbackBtn.disabled = true;
+            confirmGoogleFallbackBtn.textContent = "Linking...";
+
+            try {
+                linkedGoogleEmail = email;
+                const emailPrefix = email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '').substring(0, 12);
+
+                if (user) {
+                    const userProfileRef = doc(db, ...basePath, 'userProfiles', user.uid);
+                    const updateData = { googleEmail: email, linkedAt: Timestamp.now() };
+                    
+                    if (!currentUsername && emailPrefix && isValidUsername(emailPrefix)) {
+                        updateData.username = emailPrefix;
+                        currentUsername = emailPrefix;
+                        usernameInput.value = emailPrefix;
+                    }
+                    await setDoc(userProfileRef, updateData, { merge: true });
+                }
+
+                googleFallbackModal.classList.remove('active');
+                updateAuthUI();
+            } catch (err) {
+                showNotice("Could not link email: " + err.message, "Sync Error");
+            } finally {
+                confirmGoogleFallbackBtn.disabled = false;
+                confirmGoogleFallbackBtn.textContent = "Complete Account Link";
             }
         }
 
         async function handleSignOut() {
             try {
-                await signOut(auth);
-                await signInAnonymously(auth);
-            } catch (error) { showError("Failed to sign out."); }
+                linkedGoogleEmail = "";
+                if (user) {
+                    const userProfileRef = doc(db, ...basePath, 'userProfiles', user.uid);
+                    await setDoc(userProfileRef, { googleEmail: null }, { merge: true });
+                }
+                const hasRealGoogleProvider = user?.providerData.some(p => p.providerId === 'google.com');
+                if (hasRealGoogleProvider) {
+                    await signOut(auth);
+                    await signInAnonymously(auth);
+                } else {
+                    updateAuthUI();
+                }
+            } catch (error) {
+                showNotice("Failed to switch session: " + error.message);
+            }
         }
 
         async function loadUserProfile() {
-            if(!user) return;
+            if (!user) return;
             const userProfileRef = doc(db, ...basePath, 'userProfiles', user.uid);
             try {
                 const docSnap = await getDoc(userProfileRef);
-                if (docSnap.exists() && docSnap.data().username) {
-                    currentUsername = docSnap.data().username;
-                    usernameInput.value = currentUsername;
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    if (data.username) {
+                        currentUsername = data.username;
+                        usernameInput.value = currentUsername;
+                    } else {
+                        currentUsername = "";
+                        usernameInput.placeholder = getDefaultUsername(user.uid);
+                        usernameInput.value = "";
+                    }
+                    if (data.googleEmail) {
+                        linkedGoogleEmail = data.googleEmail;
+                    }
                 } else {
                     currentUsername = ""; 
                     usernameInput.placeholder = getDefaultUsername(user.uid);
                     usernameInput.value = "";
                 }
-            } catch (error) { console.error("Error loading profile:", error); }
+            } catch (error) {
+                console.error("Error loading profile:", error);
+            }
         }
 
         async function handleSaveUsername() {
-            if(!user) return;
+            if (!user) return;
             const newName = usernameInput.value.trim();
             if (!isValidUsername(newName)) {
-                showError("Invalid name. Use 1-12 letters/numbers only. No slurs.");
+                showNotice("Please use 1-12 letters, numbers, or spaces only.", "Invalid Tag");
                 return;
             }
 
@@ -533,7 +907,9 @@
             try {
                 await runTransaction(db, async (transaction) => {
                     const nameDoc = await transaction.get(takenNamesRef);
-                    if (nameDoc.exists() && nameDoc.data().uid !== user.uid) throw new Error("Username already taken!");
+                    if (nameDoc.exists() && nameDoc.data().uid !== user.uid) {
+                        throw new Error("That display tag is already claimed by another player!");
+                    }
                     
                     const currentProfile = await transaction.get(userProfileRef);
                     if (currentProfile.exists()) {
@@ -545,18 +921,25 @@
                     transaction.set(takenNamesRef, { uid: user.uid, original: newName });
                     transaction.set(userProfileRef, { username: newName }, { merge: true });
                 });
+
                 currentUsername = newName;
+                // Also update leaderboard & active pixel if currently owned by this user
+                setDoc(doc(db, ...basePath, 'leaderboard', user.uid), { username: newName }, { merge: true });
+                if (currentOwnerId === user.uid) {
+                    setDoc(doc(db, ...basePath, 'gameState', 'pixel'), { ownerName: newName }, { merge: true });
+                }
+
                 nameStatus.classList.remove('hidden');
                 setTimeout(() => nameStatus.classList.add('hidden'), 3000);
             } catch (error) {
-                showError(error.message || "Failed to save username.");
+                showNotice(error.message || "Failed to save display tag.");
             } finally {
                 saveNameBtn.disabled = false;
                 saveNameBtn.textContent = 'Save';
             }
         }
 
-        // --- Sync Listeners ---
+        // --- Realtime Firestore Listeners ---
         function setupListeners() {
             if (!user) return;
             if (pixelUnsubscribe) pixelUnsubscribe();
@@ -570,25 +953,43 @@
                 if (docSnap.exists()) {
                     updatePixelVisuals(docSnap.data());
                 } else {
-                    setDoc(pixelRef, { color: '#ffffff', ownerId: 'system', ownerName: 'System', captureTime: Timestamp.now() });
+                    setDoc(pixelRef, { 
+                        color: '#ffffff', 
+                        ownerId: 'system', 
+                        ownerName: 'Nobody', 
+                        captureTime: Timestamp.now() 
+                    });
                 }
-            }, (err) => showError("Lost connection to server."));
+            }, (err) => {
+                console.error("Pixel listener error:", err);
+                dismissLoadingScreen();
+            });
 
             const leaderboardColRef = collection(db, ...basePath, 'leaderboard');
             leaderboardUnsubscribe = onSnapshot(leaderboardColRef, (snapshot) => {
                 isLeaderboardLoaded = true;
                 checkLoadingComplete();
                 baseLeaderboard = [];
-                snapshot.forEach(doc => baseLeaderboard.push({ id: doc.id, ...doc.data() }));
+                snapshot.forEach(docSnap => baseLeaderboard.push({ id: docSnap.id, ...docSnap.data() }));
                 refreshLiveLeaderboard(); 
+            }, (err) => {
+                console.error("Leaderboard listener error:", err);
+                dismissLoadingScreen();
             });
 
             liveTickerInterval = setInterval(refreshLiveLeaderboard, 1000);
         }
 
         function updatePixelVisuals(data) {
-            pixelEl.style.backgroundColor = data.color;
-            statusColorIndicator.style.backgroundColor = data.color;
+            const color = data.color || '#ffffff';
+            pixelEl.style.backgroundColor = color;
+            document.documentElement.style.setProperty('--pixel-glow', color + '55');
+            statusColorIndicator.style.backgroundColor = color;
+            if (headerBrandDot) {
+                headerBrandDot.style.backgroundColor = color;
+                headerBrandDot.style.boxShadow = `0 0 12px ${color}`;
+            }
+
             currentOwnerNameEl.textContent = data.ownerName || getDefaultUsername(data.ownerId);
             currentOwnerId = data.ownerId;
             currentOwnerCaptureTime = data.captureTime ? data.captureTime.toMillis() : Date.now();
@@ -601,55 +1002,85 @@
         }
 
         function refreshLiveLeaderboard() {
-            if (baseLeaderboard.length === 0 && !currentOwnerId) {
-                leaderboardListEl.innerHTML = '<div class="text-center text-slate-500 mt-10">No scores yet.</div>';
+            if (baseLeaderboard.length === 0 && (!currentOwnerId || currentOwnerId === 'system')) {
+                leaderboardListEl.innerHTML = '<div class="text-center text-slate-500 py-12 text-xs">No holders yet. Claim the pixel first!</div>';
                 return;
             }
-            const liveEntries = baseLeaderboard.map(entry => ({...entry}));
+            const liveEntries = baseLeaderboard.map(entry => ({ ...entry }));
             
             if (currentOwnerId && currentOwnerId !== 'system' && currentOwnerCaptureTime) {
-                const liveHoldTime = Date.now() - currentOwnerCaptureTime;
+                const liveHoldTime = Math.max(0, Date.now() - currentOwnerCaptureTime);
                 const ownerEntry = liveEntries.find(e => e.id === currentOwnerId);
-                if (ownerEntry) ownerEntry.totalHoldTime = (ownerEntry.totalHoldTime || 0) + liveHoldTime;
-                else liveEntries.push({ id: currentOwnerId, username: currentOwnerNameEl.textContent, totalHoldTime: liveHoldTime });
+                if (ownerEntry) {
+                    ownerEntry.totalHoldTime = (ownerEntry.totalHoldTime || 0) + liveHoldTime;
+                } else {
+                    liveEntries.push({ 
+                        id: currentOwnerId, 
+                        username: currentOwnerNameEl.textContent, 
+                        totalHoldTime: liveHoldTime 
+                    });
+                }
             }
             
-            liveEntries.sort((a, b) => (b.totalHoldTime || 0) - (a.totalHoldTime || 0));
-            updateLeaderboardUI(liveEntries.slice(0, 10));
+            const validEntries = liveEntries.filter(e => (e.totalHoldTime || 0) > 0);
+            validEntries.sort((a, b) => (b.totalHoldTime || 0) - (a.totalHoldTime || 0));
+            updateLeaderboardUI(validEntries.slice(0, 10));
         }
 
         function updateLeaderboardUI(entries) {
             leaderboardListEl.innerHTML = '';
             entries.forEach((entry, index) => {
-                const rankColor = index === 0 ? 'text-yellow-400 font-bold' : index === 1 ? 'text-slate-300 font-bold' : index === 2 ? 'text-amber-600 font-bold' : 'text-slate-400';
+                const isFirst = index === 0;
+                const isSecond = index === 1;
+                const isThird = index === 2;
+
+                const rankBadgeClass = isFirst 
+                    ? 'bg-amber-400/15 text-amber-300 border-amber-400/30' 
+                    : isSecond 
+                    ? 'bg-slate-300/15 text-slate-200 border-slate-300/30' 
+                    : isThird 
+                    ? 'bg-amber-700/20 text-amber-500 border-amber-600/30' 
+                    : 'bg-slate-800/60 text-slate-400 border-slate-700/50';
+
                 const isMe = entry.id === user?.uid;
-                const bgClass = isMe ? 'bg-blue-900/30 border border-blue-800/50' : 'border border-transparent';
+                const isCurrentHolder = entry.id === currentOwnerId;
+                const rowBgClass = isMe 
+                    ? 'bg-blue-500/10 border-blue-500/30' 
+                    : 'bg-slate-900/40 hover:bg-slate-800/50 border-slate-800/60';
+
                 const displayUserName = escapeHTML(entry.username || getDefaultUsername(entry.id));
 
                 const row = document.createElement('div');
-                row.className = `flex justify-between items-center p-3 mb-2 rounded-lg leaderboard-row ${bgClass}`;
+                row.className = `flex justify-between items-center px-3.5 py-2.5 rounded-2xl border transition-colors ${rowBgClass}`;
                 row.innerHTML = `
-                    <div class="flex items-center gap-3">
-                        <span class="w-6 text-center ${rankColor} pixel-font text-xs">#${index + 1}</span>
-                        <div class="flex flex-col">
-                            <span class="text-white font-mono text-sm">${displayUserName} ${isMe ? '<span class="text-xs text-blue-400 ml-1">(You)</span>' : ''}</span>
+                    <div class="flex items-center gap-3 min-w-0">
+                        <span class="w-7 h-7 rounded-lg border flex items-center justify-center ${rankBadgeClass} mono-font text-xs font-bold shrink-0">
+                            ${index + 1}
+                        </span>
+                        <div class="flex items-center gap-1.5 truncate">
+                            <span class="text-white font-medium text-xs sm:text-sm truncate">${displayUserName}</span>
+                            ${isMe ? '<span class="text-[10px] font-semibold bg-blue-500/20 text-blue-300 px-1.5 py-0.5 rounded">YOU</span>' : ''}
+                            ${isCurrentHolder ? '<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" title="Currently holding the pixel"></span>' : ''}
                         </div>
                     </div>
-                    <div class="text-right">
-                        <span class="text-emerald-400 font-mono font-bold whitespace-nowrap text-xs sm:text-sm">${formatTime(entry.totalHoldTime || 0)}</span>
+                    <div class="text-right shrink-0 ml-2">
+                        <span class="text-emerald-400 mono-font font-semibold text-xs">${formatTime(entry.totalHoldTime || 0)}</span>
                     </div>`;
                 leaderboardListEl.appendChild(row);
             });
         }
 
-        // --- Game Actions ---
+        // --- Gameplay Actions ---
         function handlePixelClick() {
-            if (!user) { showError("Connecting to server..."); return; }
+            if (!user) { 
+                showNotice("Still connecting to the game server. Try again in a moment!"); 
+                return; 
+            }
             if (cooldownActive) return;
 
             clickCount++;
             if (clickCount % 10 === 0) {
-                showCaptcha();
+                showCaptcha(false);
                 return; 
             }
             performClaim();
@@ -660,7 +1091,7 @@
             const pixelRef = doc(db, ...basePath, 'gameState', 'pixel');
             const newCaptureTimeMs = Date.now();
             const prevOwnerId = currentOwnerId;
-            const timeHeldMs = newCaptureTimeMs - currentOwnerCaptureTime;
+            const timeHeldMs = currentOwnerCaptureTime ? Math.max(0, newCaptureTimeMs - currentOwnerCaptureTime) : 0;
             const displayUserName = currentUsername || getDefaultUsername(user.uid);
 
             try {
@@ -687,7 +1118,7 @@
                         captureTime: Timestamp.fromMillis(newCaptureTimeMs)
                     });
 
-                    if (updatePrevOwner) {
+                    if (updatePrevOwner && prevLeaderboardRef) {
                         transaction.set(prevLeaderboardRef, {
                             totalHoldTime: currentTotal + timeHeldMs,
                             username: oldName 
@@ -697,7 +1128,7 @@
 
                 setDoc(doc(db, ...basePath, 'leaderboard', user.uid), { username: displayUserName }, { merge: true });
             } catch (error) {
-                showError("Failed to claim pixel. " + error.message);
+                showNotice("Could not claim pixel: " + error.message, "Claim Failed");
                 cooldownActive = false;
                 cooldownOverlay.classList.add('hidden');
             }
@@ -707,10 +1138,13 @@
             cooldownActive = true;
             cooldownTimeLeft = COOLDOWN_DURATION_MS;
             cooldownOverlay.classList.remove('hidden');
+            cooldownTimerText.textContent = (cooldownTimeLeft / 1000).toFixed(1);
+            
             const interval = setInterval(() => {
                 cooldownTimeLeft -= 100;
-                cooldownOverlay.textContent = (cooldownTimeLeft / 1000).toFixed(1);
-                if (cooldownTimeLeft <= 0) {
+                if (cooldownTimeLeft > 0) {
+                    cooldownTimerText.textContent = (cooldownTimeLeft / 1000).toFixed(1);
+                } else {
                     clearInterval(interval);
                     cooldownActive = false;
                     cooldownOverlay.classList.add('hidden');
@@ -718,7 +1152,7 @@
             }, 100);
         }
 
-        // Init App
+        // Start App
         initUI();
         initAuth();
     </script>
